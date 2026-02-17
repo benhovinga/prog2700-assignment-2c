@@ -4,16 +4,33 @@
     --card-scale: 1;
 }
 
+body {
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+h1 {
+    text-transform: uppercase;
+    text-align: center;
+}
+
 .tabletop {
     background-color: darkgreen;
     display: flex;
     padding: 1rem;
+    gap: 0.5rem;
+    max-width: fit-content;
+    margin: 0 auto;
+    border-radius: 0.8rem;
 }
 
 .card {
     width: calc(var(--card-width) * var(--card-scale));
     height: calc(var(--card-height) * var(--card-scale));
     background-size: cover;
+}
+
+.back {
+    background-image: url("https://deckofcardsapi.com/static/img/back.png");
 }
 
 .pokerhand {
