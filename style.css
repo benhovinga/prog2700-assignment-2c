@@ -1,0 +1,17 @@
+:root {
+    --card-width: 226px;
+    --card-height: 314px;
+    --card-scale: 1;
+}
+
+.tabletop {
+    background-color: darkgreen;
+    display: flex;
+    padding: 1rem;
+}
+
+.card {
+    width: calc(var(--card-width) * var(--card-scale));
+    height: calc(var(--card-height) * var(--card-scale));
+    background-size: cover;
+}
