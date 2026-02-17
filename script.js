@@ -1,4 +1,4 @@
-const TEST_MODE = true;
+const TEST_MODE = false;
 
 class Card {
     #code;
@@ -124,22 +124,52 @@ class PokerHand {
         return this.#cards;
     }
 
-    static #CARD_ORDER = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "JACK", "QUEEN", "KING", "ACE"];
+    static #CARD_ORDER_ACE_HIGH = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "JACK", "QUEEN", "KING", "ACE"];
+    static #CARD_ORDER_ACE_LOW = ["ACE", "2", "3", "4", "5", "6", "7", "8", "9", "10", "JACK", "QUEEN", "KING"];
+
+    /**
+     * Returns the order of the cards depending on if the ace is considered the high card or the low card.
+     * @param {boolean} ace_high 
+     * @returns {string[]}
+     */
+    static card_order(ace_high = true) {
+        if (ace_high)
+            return [...PokerHand.#CARD_ORDER_ACE_HIGH];
+        return [...PokerHand.#CARD_ORDER_ACE_LOW]
+    }
+
+    /**
+     * Counts the cards and returns an object with keys being the card and the value being the count.
+     * @returns {Object<string, number>}
+     */
+    countCards() {
+        return this.#cards.reduce((counter, card) => {
+            if (!counter[card.value])
+                counter[card.value] = 1;
+            else 
+                counter[card.value] += 1;
+            return counter;
+        }, {});
+    }
 
     /**
      * Sorts the cards in place. This method mutates the array and returns a reference to the same array.
+     * @param {boolean} ace_high 
      * @returns {Card[]}
      */
-    sort() {
-        return this.#cards.sort((a, b) => PokerHand.#CARD_ORDER.indexOf(a.value) - PokerHand.#CARD_ORDER.indexOf(b.value));
+    sort(ace_high = true) {
+        const order = PokerHand.card_order(ace_high);
+        return this.#cards.sort((a, b) => order.indexOf(a.value) - order.indexOf(b.value));
     }
 
     /**
      * Returns a copy of the cards with its elements sorted.
+     * @param {boolean} ace_high 
      * @returns {Card[]}
      */
-    toSorted() {
-        return this.#cards.toSorted((a, b) => PokerHand.#CARD_ORDER.indexOf(a.value) - PokerHand.#CARD_ORDER.indexOf(b.value));
+    toSorted(ace_high = true) {
+        const order = PokerHand.card_order(ace_high);
+        return this.#cards.toSorted((a, b) => order.indexOf(a.value) - order.indexOf(b.value));
     }
 
     /**
@@ -156,9 +186,15 @@ class PokerHand {
      * @returns {boolean}
      */
     isStraight() {
-        const values = this.toSorted().map(card => card.value);
-        const offset = PokerHand.#CARD_ORDER.indexOf(values[0]);
-        return values.every((value, index) => value === PokerHand.#CARD_ORDER[index + offset]);
+        // Check with ace high and ace low
+        for (let i = 0; i <= 1; i++) {
+            const order = PokerHand.card_order(Boolean(i));
+            const values = this.toSorted(Boolean(i)).map(card => card.value);
+            const offset = order.indexOf(values[0]);
+            if (values.every((value, index) => value === order[index + offset]))
+                return true;
+        }
+        return false;
     }
 
     /**
@@ -168,7 +204,7 @@ class PokerHand {
     isRoyalFlush() {
         if (!this.isFlush())
             return false;
-        const royalFlush = PokerHand.#CARD_ORDER.slice(-5);  // Top 5 cards
+        const royalFlush = PokerHand.card_order(true).slice(-5);  // Top 5 cards
         const values = this.#cards.map(card => card.value);
         return royalFlush.every(value => values.includes(value));
     }
@@ -179,20 +215,6 @@ class PokerHand {
      */
     isStraightFlush() {
         return this.isFlush() && this.isStraight();
-    }
-
-    /**
-     * Counts the cards and returns an object with keys being the card and the value being the count.
-     * @returns {Object<string, number>}
-     */
-    countCards() {
-        return this.#cards.reduce((counter, card) => {
-            if (!counter[card.value])
-                counter[card.value] = 1;
-            else 
-                counter[card.value] += 1;
-            return counter;
-        }, {});
     }
 
     /**
@@ -300,8 +322,7 @@ async function main() {
     // PART THREE: DISPLAY THE HAND IN A WEB PAGE (10 PTS)
     // Display the cards in the browser.  Use a CSS stylesheet to arrange them on the screen.
 
-    // Pre sort (optional)
-    pokerHand.sort();
+    pokerHand.sort();  // Pre-sort (optional)
 
     pokerHand.displayCards(document.getElementById('tabletop'));
     console.info("Rendered cards on screen")
@@ -425,6 +446,7 @@ function test() {
     
     console.log("Starting Tests");
     testCases.forEach(fn => runTest(fn));
+    console.log("Finished Tests");
 }
 
 
