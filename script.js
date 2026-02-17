@@ -284,16 +284,42 @@ class PokerHand {
      * Display the cards on the screen.
      * @param {HTMLElement} element 
      */
-    displayCards(element) {
+    async displayCards(element) {
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms))
+        }
+        async function flipCards(cards) {
+            for (const card of cards) {
+                await delay(300);
+                card.classList.add("flipped");
+            }
+        }
         const cardElements = this.#cards.map((card) => {
-            const elem = document.createElement("div");
-            elem.classList.add("card");
-            elem.style.backgroundImage = `url("${card.image}")`;
-            return elem;
+            const backElement = document.createElement("div");
+            backElement.classList.add("back");
+
+            const faceElement = document.createElement("div");
+            faceElement.classList.add("face")
+            faceElement.style.backgroundImage = `url("${card.image}")`;
+
+            const cardInnerElement = document.createElement("div");
+            cardInnerElement.classList.add("flip-inner");
+            cardInnerElement.appendChild(backElement);
+            cardInnerElement.appendChild(faceElement);
+
+            const cardElement = document.createElement("div");
+            cardElement.classList.add("card");
+
+            cardElement.appendChild(cardInnerElement);
+            return cardElement;
         });
 
         element.innerHTML = "";
         cardElements.forEach(elem => element.appendChild(elem));
+
+        // Flip cards
+        await flipCards(element.children);
+        await delay(300);
     }
 
     /**
@@ -324,7 +350,7 @@ async function main() {
 
     pokerHand.sort();  // Pre-sort (optional)
 
-    pokerHand.displayCards(document.getElementById('tabletop'));
+    await pokerHand.displayCards(document.getElementById('tabletop'));
     console.info("Rendered cards on screen")
 
     // PART FOUR: WRITE A FUNCTION THAT WILL DETERMINE THE HIGHEST POKER HAND FOR THE DISPLAYED CARDS (20 PTS)
