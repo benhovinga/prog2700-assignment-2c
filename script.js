@@ -126,6 +126,89 @@ function displayCards(cards) {
     cardElements.forEach(elem => tabletop.appendChild(elem));
 }
 
+const CARD_ORDER = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "JACK", "QUEEN", "KING", "ACE"];
+
+/**
+ * Returns a sorted copy of a cards array.
+ * @param {Card[]} cards 
+ * @returns {Card[]}
+ */
+function sortCards(cards) {
+    return cards.toSorted((a, b) => CARD_ORDER.indexOf(a.value) - CARD_ORDER.indexOf(b.value));
+}
+
+/**
+ * A Flush is any five cards of the same suit that are not in sequence.
+ * @param {Card[]} cards 
+ * @returns {boolean}
+ */
+function isFlush(cards) {
+    const testSuit = cards[0].suite;
+    return cards.every(card => card.suite === testSuit);
+}
+
+/**
+ * A Straight is five consecutive cards, not all of the same suit.
+ * @param {Card[]} cards 
+ * @returns {boolean}
+ */
+function isStraight(cards) {
+    const values = sortCards(cards).map(card => card.value);
+    const offset = CARD_ORDER.indexOf(values[0]);
+    return values.every((value, index) => value === CARD_ORDER[index + offset]);
+}
+
+/**
+ * A Royal Flush is the highest five cards all in the same suit to form the best possible Straight Flush.
+ * @param {Card[]} cards 
+ * @returns {boolean}
+ */
+function isRoyalFlush(cards) {
+    if (!isFlush(cards))
+        return false;
+    const royalFlush = CARD_ORDER.slice(-5);  // Top 5 cards
+    const values = cards.map(card => card.value);
+    return royalFlush.every(value => values.includes(value));
+}
+
+/**
+ * A Straight Flush is five cards in consecutive order of the same suite.
+ * @param {Card[]} cards 
+ * @returns {boolean}
+ */
+function isStraightFlush(cards) {
+    return isFlush(cards) && isStraight(cards);
+}
+
+/**
+ * Determine the highest poker hand for the given cards
+ * @param {Card[]} cards 
+ */
+function highestPokerHand(cards) {
+    if (isRoyalFlush(cards)) {
+        return "Royal Flush";
+    } else if (isStraightFlush(cards)) {
+        return "Straight Flush";
+    } else if (isFourOfAKind(cards)) { // TODO
+        return "Four of a Kind";
+    } else if (isFullHouse(cards)) { // TODO
+        return "Full House";
+    } else if (isFlush(cards)) {
+        return "Flush";
+    } else if (isStraight(cards)) {
+        return "Straight";
+    } else if (isThreeOfAKind(cards)) { // TODO
+        return "Three of a Kind";
+    } else if (isTwoPair(cards)) { // TODO
+        return "Two Pair";
+    } else if (isOnePair(cards)) { // TODO
+        return "One Pair";
+    } else if (isHighCard(cards)) { // TODO
+        return "High Card";
+    }
+    return "no hand found";
+}
+
 async function main() {
     // PART ONE: RETRIEVE AND PERSIST A DECK OF CARDS FROM THE API (10 PTS)
     // Using the Deck of Cards API (https://deckofcardsapi.com/), use fetch() to retrieve a deck of cards that can be used by the application.
@@ -147,6 +230,15 @@ async function main() {
     // PART FOUR: WRITE A FUNCTION THAT WILL DETERMINE THE HIGHEST POKER HAND FOR THE DISPLAYED CARDS (20 PTS)
     // Write a function that will determine and output the highest poker hand based on the given five cards.
 
+    console.log(highestPokerHand(cards));
+
+    // console.log(isStraight([
+    //     new Card("2S", "SPADES", "2", ""),
+    //     new Card("3S", "SPADES", "3", ""),
+    //     new Card("4S", "SPADES", "4", ""),
+    //     new Card("5S", "SPADES", "5", ""),
+    //     new Card("6S", "SPADES", "6", ""),
+    // ]));
 }
 
 document.addEventListener('DOMContentLoaded', main);
