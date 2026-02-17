@@ -409,7 +409,7 @@ function test() {
                 new Card("KD", "DIAMONDS", "KING", "null"),
                 new Card("4C", "CLUBS", "4", "null"),
             ]);
-            return hand.isOfAKind(2) && hand.highestHand() === "One Pair";
+            return hand.isOnePair() && hand.highestHand() === "One Pair";
         },
         function test_poker_hand_is_high_card() {
             const hand = new PokerHand([
