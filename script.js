@@ -23,7 +23,7 @@ class Card {
         return this.#code;
     }
 
-    get suite() {
+    get suit() {
         return this.#suit;
     }
 
@@ -108,106 +108,179 @@ class Deck {
     }
 }
 
-/**
- * Display the cards on the tabletop.
- * @param {Card[]} cards 
- */
-function displayCards(cards) {
-    const cardElements = cards.map((card) => {
-        const element = document.createElement("div");
-        element.classList.add("card");
-        element.style.backgroundImage = `url("${card.image}")`;
-        return element;
-    });
 
-    const tabletop = document.getElementById("tabletop");
-    tabletop.innerHTML = "";
+class PokerHand {
+    #cards;
 
-    cardElements.forEach(elem => tabletop.appendChild(elem));
-}
+    constructor(cards = []) {
+        if (!cards.every(card => card instanceof Card))
+            throw new TypeError("cards must be an array of Card.")
+        this.#cards = [...cards];
+    }
+    
+    get cards() {
+        return this.#cards;
+    }
 
-const CARD_ORDER = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "JACK", "QUEEN", "KING", "ACE"];
+    static #CARD_ORDER = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "JACK", "QUEEN", "KING", "ACE"];
 
-/**
- * Returns a sorted copy of a cards array.
- * @param {Card[]} cards 
- * @returns {Card[]}
- */
-function sortCards(cards) {
-    return cards.toSorted((a, b) => CARD_ORDER.indexOf(a.value) - CARD_ORDER.indexOf(b.value));
-}
+    /**
+     * Sorts the cards in place. This method mutates the array and returns a reference to the same array.
+     * @returns {Card[]}
+     */
+    sort() {
+        return this.#cards.sort((a, b) => PokerHand.#CARD_ORDER.indexOf(a.value) - PokerHand.#CARD_ORDER.indexOf(b.value));
+    }
 
-/**
- * A Flush is any five cards of the same suit that are not in sequence.
- * @param {Card[]} cards 
- * @returns {boolean}
- */
-function isFlush(cards) {
-    const testSuit = cards[0].suite;
-    return cards.every(card => card.suite === testSuit);
-}
+    /**
+     * Returns a copy of the cards with its elements sorted.
+     * @returns {Card[]}
+     */
+    toSorted() {
+        return this.#cards.toSorted((a, b) => PokerHand.#CARD_ORDER.indexOf(a.value) - PokerHand.#CARD_ORDER.indexOf(b.value));
+    }
 
-/**
- * A Straight is five consecutive cards, not all of the same suit.
- * @param {Card[]} cards 
- * @returns {boolean}
- */
-function isStraight(cards) {
-    const values = sortCards(cards).map(card => card.value);
-    const offset = CARD_ORDER.indexOf(values[0]);
-    return values.every((value, index) => value === CARD_ORDER[index + offset]);
-}
+    /**
+     * A Flush is any five cards of the same suit that are not in sequence.
+     * @returns {boolean}
+     */
+    isFlush() {
+        const testSuit = this.#cards[0].suit;
+        return this.#cards.every(card => card.suit === testSuit);
+    }
 
-/**
- * A Royal Flush is the highest five cards all in the same suit to form the best possible Straight Flush.
- * @param {Card[]} cards 
- * @returns {boolean}
- */
-function isRoyalFlush(cards) {
-    if (!isFlush(cards))
-        return false;
-    const royalFlush = CARD_ORDER.slice(-5);  // Top 5 cards
-    const values = cards.map(card => card.value);
-    return royalFlush.every(value => values.includes(value));
-}
+    /**
+     * A Straight is five consecutive cards, not all of the same suit.
+     * @returns {boolean}
+     */
+    isStraight() {
+        const values = this.toSorted().map(card => card.value);
+        const offset = PokerHand.#CARD_ORDER.indexOf(values[0]);
+        return values.every((value, index) => value === PokerHand.#CARD_ORDER[index + offset]);
+    }
 
-/**
- * A Straight Flush is five cards in consecutive order of the same suite.
- * @param {Card[]} cards 
- * @returns {boolean}
- */
-function isStraightFlush(cards) {
-    return isFlush(cards) && isStraight(cards);
-}
+    /**
+     * A Royal Flush is the highest five cards all in the same suit to form the best possible Straight Flush.
+     * @returns {boolean}
+     */
+    isRoyalFlush() {
+        if (!this.isFlush())
+            return false;
+        const royalFlush = PokerHand.#CARD_ORDER.slice(-5);  // Top 5 cards
+        const values = this.#cards.map(card => card.value);
+        return royalFlush.every(value => values.includes(value));
+    }
 
-/**
- * Determine the highest poker hand for the given cards
- * @param {Card[]} cards 
- */
-function highestPokerHand(cards) {
-    if (isRoyalFlush(cards)) {
-        return "Royal Flush";
-    } else if (isStraightFlush(cards)) {
-        return "Straight Flush";
-    } else if (isFourOfAKind(cards)) { // TODO
-        return "Four of a Kind";
-    } else if (isFullHouse(cards)) { // TODO
-        return "Full House";
-    } else if (isFlush(cards)) {
-        return "Flush";
-    } else if (isStraight(cards)) {
-        return "Straight";
-    } else if (isThreeOfAKind(cards)) { // TODO
-        return "Three of a Kind";
-    } else if (isTwoPair(cards)) { // TODO
-        return "Two Pair";
-    } else if (isOnePair(cards)) { // TODO
-        return "One Pair";
-    } else if (isHighCard(cards)) { // TODO
+    /**
+     * A Straight Flush is five cards in consecutive order of the same suite.
+     * @returns {boolean}
+     */
+    isStraightFlush() {
+        return this.isFlush() && this.isStraight();
+    }
+
+    /**
+     * Counts the cards and returns an object with keys being the card and the value being the count.
+     * @returns {Object<string, number>}
+     */
+    countCards() {
+        return this.#cards.reduce((counter, card) => {
+            if (!counter[card.value])
+                counter[card.value] = 1;
+            else 
+                counter[card.value] += 1;
+            return counter;
+        }, {});
+    }
+
+    /**
+     * If there are {count} of the same rank.
+     * @param {number} count 
+     * @returns {boolean}
+     */
+    isOfAKind(count = 2) {
+        return Object.values(this.countCards())
+            .some(cardCount => cardCount === count);
+    }
+
+    /**
+     * A Full House consists of three cards of a single rank and two cards of another rank.
+     * @returns {boolean}
+     */
+    isFullHouse() {
+        return this.isOfAKind(3) && this.isOfAKind(2);
+    }
+
+    /**
+     * A Two Pair is two cards with the same rank, along with two cards of a different rank.
+     * @returns {boolean}
+     */
+    isTwoPair() {
+        const counts = Object.values(this.countCards());
+        const pairs = counts.filter(value => value === 2);
+        return pairs.length === 2;
+    }
+
+    /**
+     * One Pair consists of two cards of the same rank, with three other unrelated cards.
+     * @returns {boolean}
+     */
+    isOnePair() {
+        return this.isOfAKind(2);
+    }
+
+    /**
+     * Determine the highest poker hand.
+     */
+    highestHand() {
+        if (this.isRoyalFlush()) {
+            return "Royal Flush";
+        } else if (this.isStraightFlush()) {
+            return "Straight Flush";
+        } else if (this.isOfAKind(4)) {
+            return "Four of a Kind";
+        } else if (this.isFullHouse()) {
+            return "Full House";
+        } else if (this.isFlush()) {
+            return "Flush";
+        } else if (this.isStraight()) {
+            return "Straight";
+        } else if (this.isOfAKind(3)) {
+            return "Three of a Kind";
+        } else if (this.isTwoPair()) {
+            return "Two Pair";
+        } else if (this.isOnePair()) {
+            return "One Pair";
+        }
+        // Else
         return "High Card";
     }
-    return "no hand found";
+
+    /**
+     * Display the cards on the screen.
+     * @param {HTMLElement} element 
+     */
+    displayCards(element) {
+        const cardElements = this.#cards.map((card) => {
+            const elem = document.createElement("div");
+            elem.classList.add("card");
+            elem.style.backgroundImage = `url("${card.image}")`;
+            return elem;
+        });
+
+        element.innerHTML = "";
+        cardElements.forEach(elem => element.appendChild(elem));
+    }
+
+    /**
+     * 
+     * @param {HTMLElement} element 
+     */
+    displayHighestHand(element) {
+        element.innerText = this.highestHand();
+    }
 }
+
 
 async function main() {
     // PART ONE: RETRIEVE AND PERSIST A DECK OF CARDS FROM THE API (10 PTS)
@@ -219,26 +292,23 @@ async function main() {
     // PART TWO: REQUEST FIVE CARDS FROM THE DECK (10 PTS)
     // Using the deck that was retrieved in part one, ask the API for a hand of five cards from the deck. Store the given cards in an appropriate manner in your code so that you can evaluate its contents.
 
-    const cards = await deck.draw(5);
-    console.info("Cards drawn from deck", cards);
+    const pokerHand = new PokerHand(await deck.draw(5));
+    console.info("Cards drawn from deck", pokerHand);
 
     // PART THREE: DISPLAY THE HAND IN A WEB PAGE (10 PTS)
     // Display the cards in the browser.  Use a CSS stylesheet to arrange them on the screen.
 
-    displayCards(cards);
+    // Pre sort (optional)
+    pokerHand.sort();
+
+    pokerHand.displayCards(document.getElementById('tabletop'));
+    console.info("Rendered cards on screen")
 
     // PART FOUR: WRITE A FUNCTION THAT WILL DETERMINE THE HIGHEST POKER HAND FOR THE DISPLAYED CARDS (20 PTS)
     // Write a function that will determine and output the highest poker hand based on the given five cards.
 
-    console.log(highestPokerHand(cards));
-
-    // console.log(isStraight([
-    //     new Card("2S", "SPADES", "2", ""),
-    //     new Card("3S", "SPADES", "3", ""),
-    //     new Card("4S", "SPADES", "4", ""),
-    //     new Card("5S", "SPADES", "5", ""),
-    //     new Card("6S", "SPADES", "6", ""),
-    // ]));
+    pokerHand.displayHighestHand(document.getElementById('pokerhand'));
+    console.info("Rendered highest hand on screen")
 }
 
 document.addEventListener('DOMContentLoaded', main);
