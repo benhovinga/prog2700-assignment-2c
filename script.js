@@ -302,15 +302,15 @@ class Hand {
             faceElement.classList.add("face")
             faceElement.style.backgroundImage = `url("${card.image}")`;
 
-            const cardInnerElement = document.createElement("div");
-            cardInnerElement.classList.add("flip-inner");
-            cardInnerElement.appendChild(backElement);
-            cardInnerElement.appendChild(faceElement);
+            const flipperElement = document.createElement("div");
+            flipperElement.classList.add("flipper");
+            flipperElement.appendChild(backElement);
+            flipperElement.appendChild(faceElement);
 
             const cardElement = document.createElement("div");
             cardElement.classList.add("card");
 
-            cardElement.appendChild(cardInnerElement);
+            cardElement.appendChild(flipperElement);
             return cardElement;
         });
 
