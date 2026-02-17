@@ -111,7 +111,7 @@ class Deck {
 }
 
 
-class PokerHand {
+class Hand {
     #cards;
 
     constructor(cards = []) {
@@ -134,8 +134,8 @@ class PokerHand {
      */
     static card_order(ace_high = true) {
         if (ace_high)
-            return [...PokerHand.#CARD_ORDER_ACE_HIGH];
-        return [...PokerHand.#CARD_ORDER_ACE_LOW]
+            return [...Hand.#CARD_ORDER_ACE_HIGH];
+        return [...Hand.#CARD_ORDER_ACE_LOW]
     }
 
     /**
@@ -158,7 +158,7 @@ class PokerHand {
      * @returns {Card[]}
      */
     sort(ace_high = true) {
-        const order = PokerHand.card_order(ace_high);
+        const order = Hand.card_order(ace_high);
         return this.#cards.sort((a, b) => order.indexOf(a.value) - order.indexOf(b.value));
     }
 
@@ -168,7 +168,7 @@ class PokerHand {
      * @returns {Card[]}
      */
     toSorted(ace_high = true) {
-        const order = PokerHand.card_order(ace_high);
+        const order = Hand.card_order(ace_high);
         return this.#cards.toSorted((a, b) => order.indexOf(a.value) - order.indexOf(b.value));
     }
 
@@ -188,7 +188,7 @@ class PokerHand {
     isStraight() {
         // Check with ace high and ace low
         for (let i = 0; i <= 1; i++) {
-            const order = PokerHand.card_order(Boolean(i));
+            const order = Hand.card_order(Boolean(i));
             const values = this.toSorted(Boolean(i)).map(card => card.value);
             const offset = order.indexOf(values[0]);
             if (values.every((value, index) => value === order[index + offset]))
@@ -204,7 +204,7 @@ class PokerHand {
     isRoyalFlush() {
         if (!this.isFlush())
             return false;
-        const royalFlush = PokerHand.card_order(true).slice(-5);  // Top 5 cards
+        const royalFlush = Hand.card_order(true).slice(-5);  // Top 5 cards
         const values = this.#cards.map(card => card.value);
         return royalFlush.every(value => values.includes(value));
     }
@@ -333,31 +333,22 @@ class PokerHand {
 
 
 async function main() {
-    // PART ONE: RETRIEVE AND PERSIST A DECK OF CARDS FROM THE API (10 PTS)
-    // Using the Deck of Cards API (https://deckofcardsapi.com/), use fetch() to retrieve a deck of cards that can be used by the application.
-
+    // Get a new deck of cards from the deck of cards API.
     const deck = await Deck.new();
-    console.info("New deck created", deck.deckId);
+    console.info(`Created new deck of cards with id: '${deck.deckId}'`);
+    
+    // Draw five cards and put them in the players hand.
+    const playerHand = new Hand(await deck.draw(5));
+    playerHand.sort();
+    console.info(`Five cards were drawn from the deck: ${playerHand.cards.map(card=> card.code)}`);
 
-    // PART TWO: REQUEST FIVE CARDS FROM THE DECK (10 PTS)
-    // Using the deck that was retrieved in part one, ask the API for a hand of five cards from the deck. Store the given cards in an appropriate manner in your code so that you can evaluate its contents.
+    // Display the cards on the tabletop.
+    await playerHand.displayCards(document.getElementById('tabletop'));
+    console.info("Cards were shown to the player.");
 
-    const pokerHand = new PokerHand(await deck.draw(5));
-    console.info("Cards drawn from deck", pokerHand);
-
-    // PART THREE: DISPLAY THE HAND IN A WEB PAGE (10 PTS)
-    // Display the cards in the browser.  Use a CSS stylesheet to arrange them on the screen.
-
-    pokerHand.sort();  // Pre-sort (optional)
-
-    await pokerHand.displayCards(document.getElementById('tabletop'));
-    console.info("Rendered cards on screen")
-
-    // PART FOUR: WRITE A FUNCTION THAT WILL DETERMINE THE HIGHEST POKER HAND FOR THE DISPLAYED CARDS (20 PTS)
-    // Write a function that will determine and output the highest poker hand based on the given five cards.
-
-    pokerHand.displayHighestHand(document.getElementById('pokerhand'));
-    console.info("Rendered highest hand on screen")
+    // Display the highest poker hand to the player.
+    playerHand.displayHighestHand(document.getElementById('pokerhand'));
+    console.info("The highest hand was shown to the player.");
 }
 
 
@@ -369,7 +360,7 @@ function test() {
 
     const testCases = [
         function test_poker_hand_is_royal_flush() {
-            const hand = new PokerHand([
+            const hand = new Hand([
                 new Card("0S", "SPADES", "10", "null"),
                 new Card("KS", "SPADES", "KING", "null"),
                 new Card("QS", "SPADES", "QUEEN", "null"),
@@ -379,7 +370,7 @@ function test() {
             return hand.isRoyalFlush() && hand.highestHand() === "Royal Flush";
         },
         function test_poker_hand_is_straight_flush() {
-            const hand = new PokerHand([
+            const hand = new Hand([
                 new Card("5H", "HEARTS", "5", "null"),
                 new Card("AH", "HEARTS", "ACE", "null"),
                 new Card("3H", "HEARTS", "3", "null"),
@@ -389,7 +380,7 @@ function test() {
             return hand.isStraightFlush() && hand.highestHand() === "Straight Flush";
         },
         function test_poker_hand_is_four_of_a_kind() {
-            const hand = new PokerHand([
+            const hand = new Hand([
                 new Card("7S", "SPADES", "7", "null"),
                 new Card("7C", "CLUBS", "7", "null"),
                 new Card("7D", "DIAMONDS", "7", "null"),
@@ -399,7 +390,7 @@ function test() {
             return hand.isOfAKind(4) && hand.highestHand() === "Four of a Kind";
         },
         function test_poker_hand_is_full_house() {
-            const hand = new PokerHand([
+            const hand = new Hand([
                 new Card("7D", "DIAMONDS", "7", "null"),
                 new Card("5C", "CLUBS", "5", "null"),
                 new Card("7H", "HEARTS", "7", "null"),
@@ -409,7 +400,7 @@ function test() {
             return hand.isFullHouse() && hand.highestHand() === "Full House";
         },
         function test_poker_hand_is_flush() {
-            const hand = new PokerHand([
+            const hand = new Hand([
                 new Card("0S", "SPADES", "10", "null"),
                 new Card("QS", "SPADES", "QUEEN", "null"),
                 new Card("7S", "SPADES", "7", "null"),
@@ -419,7 +410,7 @@ function test() {
             return hand.isFlush() && hand.highestHand() === "Flush";
         },
         function test_poker_hand_is_straight() {
-            const hand = new PokerHand([
+            const hand = new Hand([
                 new Card("4D", "DIAMONDS", "4", "null"),
                 new Card("6H", "HEARTS", "6", "null"),
                 new Card("5C", "CLUBS", "5", "null"),
@@ -429,7 +420,7 @@ function test() {
             return hand.isStraight() && hand.highestHand() === "Straight";
         },
         function test_poker_hand_is_three_of_a_kind() {
-            const hand = new PokerHand([
+            const hand = new Hand([
                 new Card("2D", "DIAMONDS", "2", "null"),
                 new Card("2C", "CLUBS", "2", "null"),
                 new Card("3H", "HEARTS", "3", "null"),
@@ -439,7 +430,7 @@ function test() {
             return hand.isOfAKind(3) && hand.highestHand() === "Three of a Kind";
         },
         function test_poker_hand_is_two_pair() {
-            const hand = new PokerHand([
+            const hand = new Hand([
                 new Card("JS", "SPADES", "JACK", "null"),
                 new Card("AD", "DIAMONDS", "ACE", "null"),
                 new Card("QH", "HEARTS", "QUEEN", "null"),
@@ -449,7 +440,7 @@ function test() {
             return hand.isTwoPair() && hand.highestHand() === "Two Pair";
         },
         function test_poker_hand_is_one_pair() {
-            const hand = new PokerHand([
+            const hand = new Hand([
                 new Card("7D", "DIAMONDS", "7", "null"),
                 new Card("KH", "HEARTS", "KING", "null"),
                 new Card("0S", "SPADES", "10", "null"),
@@ -459,7 +450,7 @@ function test() {
             return hand.isOnePair() && hand.highestHand() === "One Pair";
         },
         function test_poker_hand_is_high_card() {
-            const hand = new PokerHand([
+            const hand = new Hand([
                 new Card("8D", "DIAMONDS", "8", "null"),
                 new Card("9D", "DIAMONDS", "9", "null"),
                 new Card("0H", "HEARTS", "10", "null"),
