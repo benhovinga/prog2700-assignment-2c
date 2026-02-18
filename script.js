@@ -18,7 +18,8 @@ class Card {
     #code;
     #suit;
     #value;
-    #image;
+    #imageURL;
+    #element;
 
     /**
      * Represents a playing card from the Deck of Cards API.
@@ -26,9 +27,9 @@ class Card {
      * @param {string} code - A two character string. Example: "KH" = King of Hearts.
      * @param {string} suit - The card suit. Example: "HEARTS".
      * @param {string} value - The cards value. Example: "KING".
-     * @param {string} image - The URL of the card face image.
+     * @param {string} imageURL - The URL of the card face image.
      */
-    constructor(code, suit, value, image) {
+    constructor(code, suit, value, imageURL) {
         if (!code || typeof code !== "string" || code.length != 2)
             throw new TypeError("Invalid code");
         this.#code = code;
@@ -38,9 +39,10 @@ class Card {
         if (!value || typeof value !== "string")
             throw new TypeError("Invalid value");
         this.#value = value;
-        if (!image || typeof image !== "string")
+        if (!imageURL || typeof imageURL !== "string")
             throw new TypeError("Invalid image");
-        this.#image = image;
+        this.#imageURL = imageURL;
+        this.#element = Card.createCardElement(this.#imageURL);
     }
 
     get code() {
@@ -56,7 +58,54 @@ class Card {
     }
 
     get image() {
-        return this.#image;
+        return this.#imageURL;
+    }
+
+    getCardElement() {
+        return this.#element;
+    }
+
+    faceUp() {
+        this.#element.classList.add("flipped");
+    }
+
+    faceDown() {
+        this.#element.classList.remove("flipped");
+    }
+
+    flip() {
+        this.#element.classList.toggle("flipped");
+    }
+
+    /**
+     * Creates a new playing card HTML element.
+     * 
+     * @param {string} imageURL - Playing card face image URL.
+     * @returns {HTMLDivElement}
+     */
+    static createCardElement(imageURL = null) {
+        const cardWrapper = document.createElement("div");
+        cardWrapper.classList.add("card");
+
+        const cardBack = document.createElement("div");
+        cardBack.classList.add("back");
+
+        if (imageURL) {
+            const cardFace = document.createElement("div");
+            cardFace.classList.add("face");
+            cardFace.style.backgroundImage = `url("${imageURL}")`;
+
+            const flipper = document.createElement("div");
+            flipper.classList.add("flipper");
+            flipper.appendChild(cardBack);
+            flipper.appendChild(cardFace);
+
+            cardWrapper.appendChild(flipper);
+        } else {
+            cardWrapper.appendChild(back)
+        }
+
+        return cardWrapper;
     }
 }
 
@@ -166,29 +215,29 @@ class Hand {
     static #CARD_ORDER_ACE_LOW = ["ACE", "2", "3", "4", "5", "6", "7", "8", "9", "10", "JACK", "QUEEN", "KING"];
 
     /**
-     * Returns the order of the cards based on their value. Ordered low to high.
+     * Returns the order of the cards based on their rank value. Ordered from lowest value to highest value.
      * 
      * @param {boolean} ace_high - Should the Ace be considered high value (true) or low value (false)? (Default: true)
      * @returns {string[]} Array of card values.
      */
-    static cardOrder(ace_high = true) {
+    static rankOrder(ace_high = true) {
         if (ace_high)
             return [...Hand.#CARD_ORDER_ACE_HIGH];
         return [...Hand.#CARD_ORDER_ACE_LOW]
     }
 
     /**
-     * Counts the number of cards that share the same value.
+     * Counts the number of cards that share the same rank.
      * 
      * @returns {Object<string, number>} {"rank": count, ...}
      */
-    countCards() {
-        return this.#cards.reduce((counter, card) => {
-            if (!counter[card.value])
-                counter[card.value] = 1;
+    countByRank() {
+        return this.#cards.reduce((obj, card) => {
+            if (!obj[card.value])
+                obj[card.value] = 1;
             else
-                counter[card.value] += 1;
-            return counter;
+                obj[card.value] += 1;
+            return obj;
         }, {});
     }
 
@@ -199,7 +248,7 @@ class Hand {
      * @returns {Card[]} An array of Cards.
      */
     sort(ace_high = true) {
-        const order = Hand.cardOrder(ace_high);
+        const order = Hand.rankOrder(ace_high);
         return this.#cards.sort((a, b) => order.indexOf(a.value) - order.indexOf(b.value));
     }
 
@@ -210,7 +259,7 @@ class Hand {
      * @returns {Card[]} An array of Cards.
      */
     toSorted(ace_high = true) {
-        const order = Hand.cardOrder(ace_high);
+        const order = Hand.rankOrder(ace_high);
         return this.#cards.toSorted((a, b) => order.indexOf(a.value) - order.indexOf(b.value));
     }
 
@@ -232,7 +281,7 @@ class Hand {
     isStraight() {
         // Check with Ace high then with Ace low
         for (let i = 0; i <= 1; i++) {
-            const order = Hand.cardOrder(Boolean(i));
+            const order = Hand.rankOrder(Boolean(i));
             const values = this.toSorted(Boolean(i)).map(card => card.value);
             const offset = order.indexOf(values[0]);
             if (values.every((value, index) => value === order[index + offset]))
@@ -249,7 +298,7 @@ class Hand {
     isRoyalFlush() {
         if (!this.isFlush())
             return false;
-        const royalFlush = Hand.cardOrder(true).slice(-5);  // Top 5 cards
+        const royalFlush = Hand.rankOrder(true).slice(-5);  // Top 5 cards
         const values = this.#cards.map(card => card.value);
         return royalFlush.every(value => values.includes(value));
     }
@@ -270,7 +319,7 @@ class Hand {
      * @returns {boolean}
      */
     isOfAKind(count = 2) {
-        return Object.values(this.countCards())
+        return Object.values(this.countByRank())
             .some(cardCount => cardCount === count);
     }
 
@@ -289,7 +338,7 @@ class Hand {
      * @returns {boolean}
      */
     isTwoPair() {
-        const counts = Object.values(this.countCards());
+        const counts = Object.values(this.countByRank());
         const pairs = counts.filter(value => value === 2);
         return pairs.length === 2;
     }
@@ -341,35 +390,18 @@ class Hand {
         async function flipCards(cards) {
             for (const card of cards) {
                 await Time.delay(300);
-                card.classList.add("flipped");
+                card.flip();
             }
         }
 
-        const cardElements = this.#cards.map((card) => {
-            const backElement = document.createElement("div");
-            backElement.classList.add("back");
-
-            const faceElement = document.createElement("div");
-            faceElement.classList.add("face")
-            faceElement.style.backgroundImage = `url("${card.image}")`;
-
-            const flipperElement = document.createElement("div");
-            flipperElement.classList.add("flipper");
-            flipperElement.appendChild(backElement);
-            flipperElement.appendChild(faceElement);
-
-            const cardElement = document.createElement("div");
-            cardElement.classList.add("card");
-
-            cardElement.appendChild(flipperElement);
-            return cardElement;
+        // Add cards to the tabletop
+        element.innerHTML = "";
+        this.#cards.forEach((card) => {
+            element.appendChild(card.getCardElement());
         });
 
-        element.innerHTML = "";
-        cardElements.forEach(elem => element.appendChild(elem));
-
         // Flip cards
-        await flipCards(element.children);
+        await flipCards(this.#cards);
         await Time.delay(300);
     }
 
@@ -384,9 +416,28 @@ class Hand {
 }
 
 
-function main() {
-    const drawHandButton = document.getElementById("draw-hand");
-    drawHandButton.addEventListener("click", async () => {
+class Game {
+    #tabletopElem;
+    #drawHandElem;
+    #handResultElem;
+    #cardElems;
+
+    /**
+     * Represents the game board and game logic.
+     * 
+     * @param {HTMLElement} tabletopElem 
+     * @param {HTMLElement} drawHandElem 
+     * @param {HTMLElement} handResultElem 
+     */
+    constructor(tabletopElem, drawHandElem, handResultElem) {
+        this.#tabletopElem = tabletopElem;
+        this.#drawHandElem = drawHandElem;
+        this.#handResultElem = handResultElem;
+
+        this.#drawHandElem.addEventListener("click", () => this.handleDrawHandClick());
+    }
+
+    async handleDrawHandClick() {
         // Get a new deck of cards from the deck of cards API.
         const deck = await Deck.new();
         console.info(`Created new deck of cards with id: '${deck.deckId}'`);
@@ -397,13 +448,21 @@ function main() {
         console.info(`Five cards were drawn from the deck: ${playerHand.cards.map(card => card.code)}`);
 
         // Display the cards on the tabletop.
-        await playerHand.displayCards(document.getElementById('tabletop'));
+        await playerHand.displayCards(this.#tabletopElem);
         console.info("Cards were shown to the player.");
 
         // Display the highest poker hand to the player.
-        playerHand.displayHighestHand(document.getElementById('highest-hand'));
+        playerHand.displayHighestHand(this.#handResultElem);
         console.info("The highest hand was shown to the player.");
-    });
+    }
+}
+
+
+function main() {
+    const tabletopElem = document.getElementById("tabletop");
+    const drawHandElem = document.getElementById("draw-hand");
+    const handResultElem = document.getElementById("highest-hand");
+    const game = new Game(tabletopElem, drawHandElem, handResultElem);
 }
 
 
