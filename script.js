@@ -175,6 +175,22 @@ class Deck {
     }
 
     /**
+     * Load an existing deck of cards from the Deck of Cards API.
+     * 
+     * @param {string} deckId - The deck_id to load from the Deck of Cards API.
+     * @param {boolean} shuffle - Should the new deck be shuffled? (Default: true)
+     * @returns {Promise<Deck>} A new deck of cards.
+     */
+    static async load(deckId, shuffle = true) {
+        const json = await Deck.#fetchJSON(`${deckId}/${shuffle ? "shuffle/" : ""}`);
+
+        const remaining = parseInt(json["remaining"]);
+        const shuffled = Boolean(json["shuffled"]);
+
+        return new Deck(deckId, remaining, shuffled);
+    }
+
+    /**
      * Draw card(s) from the deck.
      * 
      * @param {number} numCards - Number of cards to draw. (Default: 1)
@@ -380,39 +396,6 @@ class Hand {
         // else
         return "High Card";
     }
-
-    /**
-     * Display the cards on the screen.
-     * 
-     * @param {Element} element - DOM element to mount to.
-     */
-    async displayCards(element) {
-        async function flipCards(cards) {
-            for (const card of cards) {
-                await Time.delay(300);
-                card.flip();
-            }
-        }
-
-        // Add cards to the tabletop
-        element.innerHTML = "";
-        this.#cards.forEach((card) => {
-            element.appendChild(card.getCardElement());
-        });
-
-        // Flip cards
-        await flipCards(this.#cards);
-        await Time.delay(300);
-    }
-
-    /**
-     * Display the highest hand on the screen.
-     * 
-     * @param {HTMLElement} element - DOM element to mount to.
-     */
-    displayHighestHand(element) {
-        element.innerText = this.highestHand();
-    }
 }
 
 
@@ -420,7 +403,10 @@ class Game {
     #tabletopElem;
     #drawHandElem;
     #handResultElem;
-    #cardElems;
+    /**@type {Deck} */
+    #deck;
+    /**@type {Hand} */
+    #playerHand;
 
     /**
      * Represents the game board and game logic.
@@ -437,32 +423,67 @@ class Game {
         this.#drawHandElem.addEventListener("click", () => this.handleDrawHandClick());
     }
 
-    async handleDrawHandClick() {
-        // Get a new deck of cards from the deck of cards API.
-        const deck = await Deck.new();
-        console.info(`Created new deck of cards with id: '${deck.deckId}'`);
+    async load() {
+        const deckId = localStorage.getItem("deck_id");
+        if (deckId) {
+            this.#deck = await Deck.load(deckId);
+            console.info(`Loaded an existing deck of cards with id: '${this.#deck.deckId}'`);
+        } else {
+            this.#deck = await Deck.new();
+            localStorage.setItem("deck_id", this.#deck.deckId);
+            console.info(`Created new deck of cards with id: '${this.#deck.deckId}'`);
+        }
+        return this;
+    }
 
+    async handleDrawHandClick() {
         // Draw five cards and put them in the players hand.
-        const playerHand = new Hand(await deck.draw(5));
-        playerHand.sort();
-        console.info(`Five cards were drawn from the deck: ${playerHand.cards.map(card => card.code)}`);
+        this.#playerHand = new Hand(await this.#deck.draw(5));
+        if (this.#playerHand.cards.length != 5)
+            throw Error("Didn't receive 5 cards.");
+        this.#playerHand.sort();
+        console.info(`Five cards were drawn from the deck: ${this.#playerHand.cards.map(card => card.code)}`);
 
         // Display the cards on the tabletop.
-        await playerHand.displayCards(this.#tabletopElem);
+        await this.displayCards();
         console.info("Cards were shown to the player.");
 
         // Display the highest poker hand to the player.
-        playerHand.displayHighestHand(this.#handResultElem);
+        this.displayHighestHand();
         console.info("The highest hand was shown to the player.");
+    }
+
+    async displayCards() {
+        async function flipCards(cards) {
+            for (const card of cards) {
+                await Time.delay(300);
+                card.flip();
+            }
+        }
+
+        // Add cards to the tabletop
+        this.#tabletopElem.innerHTML = "";
+        this.#playerHand.cards.forEach((card) => {
+            this.#tabletopElem.appendChild(card.getCardElement());
+        });
+
+        // Flip cards
+        await flipCards(this.#playerHand.cards);
+        await Time.delay(300);
+    }
+
+    displayHighestHand() {
+        this.#handResultElem.innerText = this.#playerHand.highestHand();
     }
 }
 
 
-function main() {
+async function main() {
     const tabletopElem = document.getElementById("tabletop");
     const drawHandElem = document.getElementById("draw-hand");
     const handResultElem = document.getElementById("highest-hand");
-    const game = new Game(tabletopElem, drawHandElem, handResultElem);
+    await new Game(tabletopElem, drawHandElem, handResultElem).load();
+    console.info("Game is ready.");
 }
 
 
