@@ -6,6 +6,14 @@ class Card {
     #value;
     #image;
 
+    /**
+     * Represents a playing card from the Deck of Cards API.
+     * 
+     * @param {string} code - A two character string. Example: "KH" = King of Hearts.
+     * @param {string} suit - The card suit. Example: "HEARTS".
+     * @param {string} value - The cards value. Example: "KING".
+     * @param {string} image - The URL of the card face image.
+     */
     constructor (code, suit, value, image) {
         if (!code || typeof code !== "string" || code.length != 2)
             throw new TypeError("Invalid code");
@@ -44,6 +52,13 @@ class Deck {
     #remaining;
     #shuffled;
 
+    /**
+     * Represents a deck of cards from the Deck of Cards API.
+     * 
+     * @param {string} deckId - The `deck_id` from the Deck of Cards API.
+     * @param {number} remaining - The number of cards remaining in the deck.
+     * @param {boolean} shuffled - Was the deck shuffled?
+     */
     constructor(deckId, remaining = 52, shuffled = false) {
         if (!deckId || typeof deckId !== "string" || deckId.length < 12)
             throw new TypeError("Invalid deck_id");
@@ -63,15 +78,17 @@ class Deck {
     get shuffled() {
         return this.#shuffled;
     }
-    
+
     static #API_BASE = "https://deckofcardsapi.com/api/deck/";
 
     /**
-     * Fetch from the Deck of Cards API and return back a json object.
-     * @param {string} endpoint The specific endpoint on the API. It will be appended to the API_BASE.
+     * Fetch from the Deck of Cards API and return back the parsed JSON.
+     * 
+     * @param {string} endpoint - The specific endpoint on the API. It will be appended to the API_BASE.
+     * @returns {any} Parsed JSON.
+     * @throws When HTTP error occurs.
      */
     static async #fetchJSON(endpoint) {
-        // Fetch the API endpoint
         const response = await fetch(Deck.#API_BASE + endpoint);
         if (!response.ok)
             throw new Error(`HTTP error! Status: ${response.status} ${response.statusText}`);
@@ -79,9 +96,10 @@ class Deck {
     }
 
     /**
-     * Builds a new deck of cards
-     * @param {boolean} shuffle default = true
-     * @returns {Promise<Deck>}
+     * Get a new deck of cards from the Deck of Cards API.
+     * 
+     * @param {boolean} shuffle - Should the new deck be shuffled? (Default: true)
+     * @returns {Promise<Deck>} A new deck of cards.
      */
     static async new(shuffle = true) {
         const json = await Deck.#fetchJSON(`new/${shuffle ? "shuffle/": ""}`);
@@ -94,9 +112,10 @@ class Deck {
     }
 
     /**
-     * Draw card(s) from the deck
-     * @param {number} numCards default = 1
-     * @returns {Promise<Card[]>}
+     * Draw card(s) from the deck.
+     * 
+     * @param {number} numCards - Number of cards to draw. (Default: 1)
+     * @returns {Promise<Card[]>} An array of Cards.
      */
     async draw(numCards = 1) {
         const json = await Deck.#fetchJSON(`${this.#deckId}/draw/?count=${numCards}`);
@@ -114,7 +133,12 @@ class Deck {
 class Hand {
     #cards;
 
-    constructor(cards = []) {
+    /**
+     * Represents a player's hand.
+     * 
+     * @param {Card[]} cards - An array of Cards.
+     */
+    constructor(cards) {
         if (!cards.every(card => card instanceof Card))
             throw new TypeError("cards must be an array of Card.")
         this.#cards = [...cards];
@@ -128,19 +152,21 @@ class Hand {
     static #CARD_ORDER_ACE_LOW = ["ACE", "2", "3", "4", "5", "6", "7", "8", "9", "10", "JACK", "QUEEN", "KING"];
 
     /**
-     * Returns the order of the cards depending on if the ace is considered the high card or the low card.
-     * @param {boolean} ace_high 
-     * @returns {string[]}
+     * Returns the order of the cards based on their value. Ordered low to high.
+     * 
+     * @param {boolean} ace_high - Should the Ace be considered high value (true) or low value (false)? (Default: true)
+     * @returns {string[]} Array of card values.
      */
-    static card_order(ace_high = true) {
+    static cardOrder(ace_high = true) {
         if (ace_high)
             return [...Hand.#CARD_ORDER_ACE_HIGH];
         return [...Hand.#CARD_ORDER_ACE_LOW]
     }
 
     /**
-     * Counts the cards and returns an object with keys being the card and the value being the count.
-     * @returns {Object<string, number>}
+     * Counts the number of cards that share the same value.
+     * 
+     * @returns {Object<string, number>} {"rank": count, ...}
      */
     countCards() {
         return this.#cards.reduce((counter, card) => {
@@ -153,28 +179,31 @@ class Hand {
     }
 
     /**
-     * Sorts the cards in place. This method mutates the array and returns a reference to the same array.
-     * @param {boolean} ace_high 
-     * @returns {Card[]}
+     * Sorts the cards in place. This method mutates the cards and returns a reference to the same cards array.
+     * 
+     * @param {boolean} ace_high - Should the Ace be considered high value (true) or low value (false)? (Default: true)
+     * @returns {Card[]} An array of Cards.
      */
     sort(ace_high = true) {
-        const order = Hand.card_order(ace_high);
+        const order = Hand.cardOrder(ace_high);
         return this.#cards.sort((a, b) => order.indexOf(a.value) - order.indexOf(b.value));
     }
 
     /**
-     * Returns a copy of the cards with its elements sorted.
-     * @param {boolean} ace_high 
-     * @returns {Card[]}
+     * Returns a copy of the cards with the cards sorted.
+     * 
+     * @param {boolean} ace_high - Should the Ace be considered high value (true) or low value (false)? (Default: true)
+     * @returns {Card[]} An array of Cards.
      */
     toSorted(ace_high = true) {
-        const order = Hand.card_order(ace_high);
+        const order = Hand.cardOrder(ace_high);
         return this.#cards.toSorted((a, b) => order.indexOf(a.value) - order.indexOf(b.value));
     }
 
     /**
      * A Flush is any five cards of the same suit that are not in sequence.
-     * @returns {boolean}
+     * 
+     * @returns {boolean} 
      */
     isFlush() {
         const testSuit = this.#cards[0].suit;
@@ -183,12 +212,13 @@ class Hand {
 
     /**
      * A Straight is five consecutive cards, not all of the same suit.
+     * 
      * @returns {boolean}
      */
     isStraight() {
-        // Check with ace high and ace low
+        // Check with Ace high then with Ace low
         for (let i = 0; i <= 1; i++) {
-            const order = Hand.card_order(Boolean(i));
+            const order = Hand.cardOrder(Boolean(i));
             const values = this.toSorted(Boolean(i)).map(card => card.value);
             const offset = order.indexOf(values[0]);
             if (values.every((value, index) => value === order[index + offset]))
@@ -199,18 +229,20 @@ class Hand {
 
     /**
      * A Royal Flush is the highest five cards all in the same suit to form the best possible Straight Flush.
+     * 
      * @returns {boolean}
      */
     isRoyalFlush() {
         if (!this.isFlush())
             return false;
-        const royalFlush = Hand.card_order(true).slice(-5);  // Top 5 cards
+        const royalFlush = Hand.cardOrder(true).slice(-5);  // Top 5 cards
         const values = this.#cards.map(card => card.value);
         return royalFlush.every(value => values.includes(value));
     }
 
     /**
      * A Straight Flush is five cards in consecutive order of the same suite.
+     * 
      * @returns {boolean}
      */
     isStraightFlush() {
@@ -219,7 +251,8 @@ class Hand {
 
     /**
      * If there are {count} of the same rank.
-     * @param {number} count 
+     * 
+     * @param {number} count - The number of cards that must be of the same rank.
      * @returns {boolean}
      */
     isOfAKind(count = 2) {
@@ -229,6 +262,7 @@ class Hand {
 
     /**
      * A Full House consists of three cards of a single rank and two cards of another rank.
+     * 
      * @returns {boolean}
      */
     isFullHouse() {
@@ -237,6 +271,7 @@ class Hand {
 
     /**
      * A Two Pair is two cards with the same rank, along with two cards of a different rank.
+     * 
      * @returns {boolean}
      */
     isTwoPair() {
@@ -247,6 +282,7 @@ class Hand {
 
     /**
      * One Pair consists of two cards of the same rank, with three other unrelated cards.
+     * 
      * @returns {boolean}
      */
     isOnePair() {
@@ -254,7 +290,9 @@ class Hand {
     }
 
     /**
-     * Determine the highest poker hand.
+     * Determines the highest possible poker hand held.
+     * 
+     * @returns {string}
      */
     highestHand() {
         if (this.isRoyalFlush()) {
@@ -276,24 +314,27 @@ class Hand {
         } else if (this.isOnePair()) {
             return "One Pair";
         }
-        // Else
+        // else
         return "High Card";
     }
 
     /**
      * Display the cards on the screen.
-     * @param {HTMLElement} element 
+     * 
+     * @param {Element} element - DOM element to mount to.
      */
     async displayCards(element) {
         function delay(ms) {
             return new Promise(resolve => setTimeout(resolve, ms))
         }
+
         async function flipCards(cards) {
             for (const card of cards) {
                 await delay(300);
                 card.classList.add("flipped");
             }
         }
+
         const cardElements = this.#cards.map((card) => {
             const backElement = document.createElement("div");
             backElement.classList.add("back");
@@ -323,8 +364,9 @@ class Hand {
     }
 
     /**
+     * Display the highest hand on the screen.
      * 
-     * @param {HTMLElement} element 
+     * @param {Element} element - DOM element to mount to.
      */
     displayHighestHand(element) {
         element.innerText = this.highestHand();
