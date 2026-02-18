@@ -14,7 +14,7 @@ class Card {
      * @param {string} value - The cards value. Example: "KING".
      * @param {string} image - The URL of the card face image.
      */
-    constructor (code, suit, value, image) {
+    constructor(code, suit, value, image) {
         if (!code || typeof code !== "string" || code.length != 2)
             throw new TypeError("Invalid code");
         this.#code = code;
@@ -102,7 +102,7 @@ class Deck {
      * @returns {Promise<Deck>} A new deck of cards.
      */
     static async new(shuffle = true) {
-        const json = await Deck.#fetchJSON(`new/${shuffle ? "shuffle/": ""}`);
+        const json = await Deck.#fetchJSON(`new/${shuffle ? "shuffle/" : ""}`);
 
         const deckId = json["deck_id"];
         const remaining = parseInt(json["remaining"]);
@@ -143,7 +143,7 @@ class Hand {
             throw new TypeError("cards must be an array of Card.")
         this.#cards = [...cards];
     }
-    
+
     get cards() {
         return this.#cards;
     }
@@ -172,7 +172,7 @@ class Hand {
         return this.#cards.reduce((counter, card) => {
             if (!counter[card.value])
                 counter[card.value] = 1;
-            else 
+            else
                 counter[card.value] += 1;
             return counter;
         }, {});
@@ -378,11 +378,11 @@ async function main() {
     // Get a new deck of cards from the deck of cards API.
     const deck = await Deck.new();
     console.info(`Created new deck of cards with id: '${deck.deckId}'`);
-    
+
     // Draw five cards and put them in the players hand.
     const playerHand = new Hand(await deck.draw(5));
     playerHand.sort();
-    console.info(`Five cards were drawn from the deck: ${playerHand.cards.map(card=> card.code)}`);
+    console.info(`Five cards were drawn from the deck: ${playerHand.cards.map(card => card.code)}`);
 
     // Display the cards on the tabletop.
     await playerHand.displayCards(document.getElementById('tabletop'));
@@ -502,7 +502,7 @@ function test() {
             return hand.highestHand() === "High Card";
         },
     ];
-    
+
     console.log("Starting Tests");
     testCases.forEach(fn => runTest(fn));
     console.log("Finished Tests");
