@@ -1,5 +1,19 @@
 const TEST_MODE = false;
 
+
+class Time {
+    /**
+     * Asynchronous delay. Use with await keyword to delay a program action.
+     * 
+     * @param {number} ms - Time in milliseconds
+     * @returns {Promise<any>}
+     */
+    static delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+}
+
+
 class Card {
     #code;
     #suit;
@@ -324,13 +338,9 @@ class Hand {
      * @param {Element} element - DOM element to mount to.
      */
     async displayCards(element) {
-        function delay(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms))
-        }
-
         async function flipCards(cards) {
             for (const card of cards) {
-                await delay(300);
+                await Time.delay(300);
                 card.classList.add("flipped");
             }
         }
@@ -360,7 +370,7 @@ class Hand {
 
         // Flip cards
         await flipCards(element.children);
-        await delay(300);
+        await Time.delay(300);
     }
 
     /**
