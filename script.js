@@ -389,7 +389,7 @@ async function main() {
     console.info("Cards were shown to the player.");
 
     // Display the highest poker hand to the player.
-    playerHand.displayHighestHand(document.getElementById('pokerhand'));
+    playerHand.displayHighestHand(document.getElementById('highest-hand'));
     console.info("The highest hand was shown to the player.");
 }
 

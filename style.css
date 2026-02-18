@@ -61,7 +61,7 @@ h1 {
     background-image: url("https://deckofcardsapi.com/static/img/back.png");
 }
 
-.pokerhand {
+.highest-hand {
     margin: 2rem auto;
     font-size: 2rem;
     width: fit-content;
