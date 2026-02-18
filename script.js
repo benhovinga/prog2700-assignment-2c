@@ -366,7 +366,7 @@ class Hand {
     /**
      * Display the highest hand on the screen.
      * 
-     * @param {Element} element - DOM element to mount to.
+     * @param {HTMLElement} element - DOM element to mount to.
      */
     displayHighestHand(element) {
         element.innerText = this.highestHand();
