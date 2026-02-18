@@ -374,23 +374,26 @@ class Hand {
 }
 
 
-async function main() {
-    // Get a new deck of cards from the deck of cards API.
-    const deck = await Deck.new();
-    console.info(`Created new deck of cards with id: '${deck.deckId}'`);
+function main() {
+    const drawHandButton = document.getElementById("draw-hand");
+    drawHandButton.addEventListener("click", async () => {
+        // Get a new deck of cards from the deck of cards API.
+        const deck = await Deck.new();
+        console.info(`Created new deck of cards with id: '${deck.deckId}'`);
 
-    // Draw five cards and put them in the players hand.
-    const playerHand = new Hand(await deck.draw(5));
-    playerHand.sort();
-    console.info(`Five cards were drawn from the deck: ${playerHand.cards.map(card => card.code)}`);
+        // Draw five cards and put them in the players hand.
+        const playerHand = new Hand(await deck.draw(5));
+        playerHand.sort();
+        console.info(`Five cards were drawn from the deck: ${playerHand.cards.map(card => card.code)}`);
 
-    // Display the cards on the tabletop.
-    await playerHand.displayCards(document.getElementById('tabletop'));
-    console.info("Cards were shown to the player.");
+        // Display the cards on the tabletop.
+        await playerHand.displayCards(document.getElementById('tabletop'));
+        console.info("Cards were shown to the player.");
 
-    // Display the highest poker hand to the player.
-    playerHand.displayHighestHand(document.getElementById('highest-hand'));
-    console.info("The highest hand was shown to the player.");
+        // Display the highest poker hand to the player.
+        playerHand.displayHighestHand(document.getElementById('highest-hand'));
+        console.info("The highest hand was shown to the player.");
+    });
 }
 
 
