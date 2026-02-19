@@ -417,7 +417,7 @@ class Game {
         this.#drawHandElem = drawHandElem;
         this.#handResultElem = handResultElem;
 
-        this.#drawHandElem.addEventListener("click", () => this.handleDrawHandClick());
+        this.#drawHandElem.addEventListener("click", (e) => this.handleDrawHand(e));
     }
 
     async load() {
@@ -433,53 +433,86 @@ class Game {
         return this;
     }
 
-    async handleDrawHandClick() {
-        // Draw five cards and put them in the players hand.
+    /**
+     * 
+     * @param {PointerEvent} event 
+     */
+    async handleDrawHand(event) {
+        // Lock the button
+        event.target.disabled = true;
+
+        console.info('"Draw Hand" button was clicked.')
+        // Hide the pervious highest hand
+        this.#handResultElem.innerHTML = "";
+
+        // Conceal the current cards (if they exist)
+        if (this.#playerHand) {
+            await this.concealHand();
+            console.info("Cards on screen have been concealed.");
+        }
+
+        // Draw five new cards and put them in the players hand.
         this.#playerHand = new Hand(await this.#deck.draw(5));
+
+        // Check if at bottom of the deck
         if (this.#playerHand.cards.length != 5)
-            throw Error("Didn't receive 5 cards.");
+            // TODO Reshuffle the deck
+            throw Error("Didn't receive 5 cards from the deck.");
+
+        // Sort the hand (ace high)
         this.#playerHand.sort();
         console.info(`Five cards were drawn from the deck: ${this.#playerHand.cards.map(card => card.code)}`);
 
-        // Display the cards on the tabletop.
-        await this.displayCards();
-        console.info("Cards were shown to the player.");
-
-        // Display the highest poker hand to the player.
-        this.displayHighestHand();
-        console.info("The highest hand was shown to the player.");
-    }
-
-    async displayCards() {
-        async function flipCards(cards) {
-            for (const card of cards) {
-                await Time.delay(300);
-                card.flip();
-            }
-        }
-
-        // Add cards to the tabletop
+        // Clear the tabletop
         this.#tabletopElem.innerHTML = "";
+
+        // Add the new cards to the tabletop
         this.#playerHand.cards.forEach((card) => {
             this.#tabletopElem.appendChild(card.getCardElement());
         });
 
-        // Flip cards
-        await flipCards(this.#playerHand.cards);
-        await Time.delay(300);
+        // Reveal the cards
+        await this.revealHand();
+        console.info("Cards were shown to the player.");
+
+        // Display the highest poker hand to the player.
+        this.#handResultElem.innerText = this.#playerHand.highestHand();
+        console.info("The highest hand was shown to the player.");
+
+        // Unlock the button
+        event.target.disabled = false;
     }
 
-    displayHighestHand() {
-        this.#handResultElem.innerText = this.#playerHand.highestHand();
+    /**
+     * Reveals the hand to the player
+     */
+    async revealHand() {
+        for (const card of this.#playerHand.cards) {
+            await Time.delay(300);   // Flip each card one after the other
+            card.faceUp();
+        }
+        await Time.delay(300);  // Allows animation to finish
+    }
+
+    /**
+     * Conceals the hand from the player
+     */
+    async concealHand() {
+        for (const card of this.#playerHand.cards) {
+            card.faceDown();
+        }
+        await Time.delay(300);  // Allows animation to finish
     }
 }
 
 
 async function main() {
-    const tabletopElem = document.getElementById("tabletop");
-    const drawHandElem = document.getElementById("draw-hand");
-    const handResultElem = document.getElementById("highest-hand");
-    await new Game(tabletopElem, drawHandElem, handResultElem).load();
+    // Load the game and start it.
+    await new Game(
+        document.getElementById("tabletop"),
+        document.getElementById("draw-hand"),
+        document.getElementById("highest-hand")
+    ).load();
     console.info("Game is ready.");
 }
 
