@@ -71,6 +71,11 @@ h1 {
     aspect-ratio: var(--card-ratio);
 }
 
+.card.popped {
+    transform: translateY(-2rem);
+    transition: transform 0.6s;
+}
+
 .flipper {
     position: relative;
     width: 100%;
