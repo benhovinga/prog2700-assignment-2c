@@ -188,15 +188,30 @@ class Deck {
     }
 
     /**
+     * Reshuffle all cards back into the deck.
+     */
+    async reshuffle() {
+        const json = await Deck.#fetchJSON(`${this.#deckId}/shuffle/`);
+
+        this.#remaining = parseInt(json["remaining"]);
+        this.#shuffled = Boolean(json["shuffled"]);
+    }
+
+    /**
      * Draw card(s) from the deck.
      * 
      * @param {number} numCards - Number of cards to draw. (Default: 1)
+     * @param {boolean} reshuffle - Reshuffle the deck if there are not enough cards to draw. (Default: false)
      * @returns {Promise<Card[]>} An array of Cards.
      */
-    async draw(numCards = 1) {
+    async draw(numCards = 1, reshuffle = false) {
+        if (reshuffle && this.#remaining < numCards)
+            await this.reshuffle();
+
         const json = await Deck.#fetchJSON(`${this.#deckId}/draw/?count=${numCards}`);
 
         this.#remaining = parseInt(json["remaining"]);
+        console.info(`Cards remaining in deck: ${this.#remaining}`);
 
         const cards = Array(...json["cards"])
             .map(card => new Card(card["code"], card["suit"], card["value"], card["image"]));
@@ -452,11 +467,10 @@ class Game {
         }
 
         // Draw five new cards and put them in the players hand.
-        this.#playerHand = new Hand(await this.#deck.draw(5));
+        this.#playerHand = new Hand(await this.#deck.draw(5, true));
 
         // Check if at bottom of the deck
         if (this.#playerHand.cards.length != 5)
-            // TODO Reshuffle the deck
             throw Error("Didn't receive 5 cards from the deck.");
 
         // Sort the hand (ace high)
