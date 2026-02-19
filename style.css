@@ -103,7 +103,6 @@ button:disabled {
 
 .face {
     transform: rotateY(180deg);
-    background-image: url("https://deckofcardsapi.com/static/img/AS.png");
 }
 
 .back {
