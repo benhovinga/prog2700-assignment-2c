@@ -525,7 +525,7 @@ async function main() {
     await new Game(
         document.getElementById("tabletop"),
         document.getElementById("draw-hand"),
-        document.getElementById("highest-hand")
+        document.getElementById("hand-result")
     ).load();
     console.info("Game is ready.");
 }
