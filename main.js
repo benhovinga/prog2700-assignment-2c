@@ -70,8 +70,12 @@ class Card {
         this.#element.classList.remove("flipped");
     }
 
-    flip() {
-        this.#element.classList.toggle("flipped");
+    highlight() {
+        this.#element.classList.add("popped");
+    }
+
+    unhighlight() {
+        this.#element.classList.remove("popped");
     }
 
     /**
@@ -162,12 +166,15 @@ class Deck {
      * @returns {Promise<Deck>} A new deck of cards.
      */
     static async new(shuffle = true) {
+        console.info(`Creating new${shuffle? " shuffled":""} deck...`);
+
         const json = await Deck.#fetchJSON(`new/${shuffle ? "shuffle/" : ""}`);
 
         const deckId = json["deck_id"];
         const remaining = parseInt(json["remaining"]);
         const shuffled = Boolean(json["shuffled"]);
 
+        console.info(`Deck ID: '${deckId}'`);
         return new Deck(deckId, remaining, shuffled);
     }
 
@@ -179,11 +186,14 @@ class Deck {
      * @returns {Promise<Deck>} A new deck of cards.
      */
     static async load(deckId, shuffle = true) {
+        console.info(`Loading${shuffle? " shuffled":""} deck...`);
+
         const json = await Deck.#fetchJSON(`${deckId}/${shuffle ? "shuffle/" : ""}`);
 
         const remaining = parseInt(json["remaining"]);
         const shuffled = Boolean(json["shuffled"]);
 
+        console.info(`Deck ID: '${deckId}'`);
         return new Deck(deckId, remaining, shuffled);
     }
 
@@ -191,8 +201,8 @@ class Deck {
      * Reshuffle all cards back into the deck.
      */
     async reshuffle() {
+        console.info("Reshuffling the deck...");
         const json = await Deck.#fetchJSON(`${this.#deckId}/shuffle/`);
-
         this.#remaining = parseInt(json["remaining"]);
         this.#shuffled = Boolean(json["shuffled"]);
     }
@@ -205,13 +215,14 @@ class Deck {
      * @returns {Promise<Card[]>} An array of Cards.
      */
     async draw(numCards = 1, reshuffle = false) {
+        console.info(`Drawing ${numCards} cards from the deck...`);
         if (reshuffle && this.#remaining < numCards)
             await this.reshuffle();
 
         const json = await Deck.#fetchJSON(`${this.#deckId}/draw/?count=${numCards}`);
 
         this.#remaining = parseInt(json["remaining"]);
-        console.info(`Cards remaining in deck: ${this.#remaining}`);
+        console.info(`Cards remaining: ${this.#remaining}`);
 
         const cards = Array(...json["cards"])
             .map(card => new Card(card["code"], card["suit"], card["value"], card["image"]));
@@ -408,6 +419,31 @@ class Hand {
         // else
         return "High Card";
     }
+
+    /**
+     * Reveals the hand to the player
+     */
+    async revealAll() {
+        for (const card of this.#cards) {
+            await Time.delay(300);   // Flip each card one after the other
+            card.faceUp();
+        }
+        await Time.delay(300);  // Allows animation to finish
+    }
+
+    /**
+     * Conceals the hand from the player
+     */
+    async concealAll() {
+        for (const card of this.#cards) {
+            card.unhighlight();
+        }
+        await Time.delay(300);  // Allows animation to finish
+        for (const card of this.#cards) {
+            card.faceDown();
+        }
+        await Time.delay(300);  // Allows animation to finish
+    }
 }
 
 
@@ -439,11 +475,9 @@ class Game {
         const deckId = localStorage.getItem("deck_id");
         if (deckId) {
             this.#deck = await Deck.load(deckId);
-            console.info(`Loaded an existing deck of cards with id: '${this.#deck.deckId}'`);
         } else {
             this.#deck = await Deck.new();
             localStorage.setItem("deck_id", this.#deck.deckId);
-            console.info(`Created new deck of cards with id: '${this.#deck.deckId}'`);
         }
         return this;
     }
@@ -456,26 +490,21 @@ class Game {
         // Lock the button
         event.target.disabled = true;
 
-        console.info('"Draw Hand" button was clicked.')
-        // Hide the pervious highest hand
+        // Draw 5 cards from the deck
+        const newCards = this.#deck.draw(5, true);
+
+        // Hide the previous hand result
         this.#handResultElem.innerHTML = "";
 
-        // Conceal the current cards (if they exist)
-        if (this.#playerHand) {
-            await this.concealHand();
-            console.info("Cards on screen have been concealed.");
-        }
+        // Conceal the current hand (if it exist)
+        if (this.#playerHand)
+            await this.#playerHand.concealAll();
 
-        // Draw five new cards and put them in the players hand.
-        this.#playerHand = new Hand(await this.#deck.draw(5, true));
+        // Put the new cards in the players hand
+        this.#playerHand = new Hand(await newCards);
 
-        // Check if at bottom of the deck
-        if (this.#playerHand.cards.length != 5)
-            throw Error("Didn't receive 5 cards from the deck.");
-
-        // Sort the hand (ace high)
+        // Sort the hand in place
         this.#playerHand.sort();
-        console.info(`Five cards were drawn from the deck: ${this.#playerHand.cards.map(card => card.code)}`);
 
         // Clear the tabletop
         this.#tabletopElem.innerHTML = "";
@@ -486,36 +515,22 @@ class Game {
         });
 
         // Reveal the cards
-        await this.revealHand();
-        console.info("Cards were shown to the player.");
+        await this.#playerHand.revealAll();
 
-        // Display the highest poker hand to the player.
+        // Display the highest poker hand results
         this.#handResultElem.innerText = this.#playerHand.highestHand();
-        console.info("The highest hand was shown to the player.");
+
+        // Testing highlight
+        this.#playerHand.cards.forEach((card, i) => {
+            if (i % 2 === 0) // Every other card
+                card.highlight();
+        });
+
+        // Highlight the highest hand
+        // TODO
 
         // Unlock the button
         event.target.disabled = false;
-    }
-
-    /**
-     * Reveals the hand to the player
-     */
-    async revealHand() {
-        for (const card of this.#playerHand.cards) {
-            await Time.delay(300);   // Flip each card one after the other
-            card.faceUp();
-        }
-        await Time.delay(300);  // Allows animation to finish
-    }
-
-    /**
-     * Conceals the hand from the player
-     */
-    async concealHand() {
-        for (const card of this.#playerHand.cards) {
-            card.faceDown();
-        }
-        await Time.delay(300);  // Allows animation to finish
     }
 }
 

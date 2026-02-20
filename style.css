@@ -70,11 +70,11 @@ button:disabled {
     width: var(--card-width);
     perspective: 1000px;
     aspect-ratio: var(--card-ratio);
+    transition: transform 0.6s;
 }
 
 .card.popped {
     transform: translateY(-2rem);
-    transition: transform 0.6s;
 }
 
 .flipper {
