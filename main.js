@@ -305,17 +305,19 @@ class Hand {
     /**
      * A Flush is any five cards of the same suit that are not in sequence.
      * 
-     * @returns {boolean} 
+     * @returns {false | (string | Card[])[]}
      */
     isFlush() {
         const testSuit = this.#cards[0].suit;
-        return this.#cards.every(card => card.suit === testSuit);
+        if (this.#cards.every(card => card.suit === testSuit))
+            return ["Flush", [...this.#cards]];
+        return false;
     }
 
     /**
      * A Straight is five consecutive cards, not all of the same suit.
      * 
-     * @returns {boolean}
+     * @returns {false | (string | Card[])[]}
      */
     isStraight() {
         // Check with Ace high then with Ace low
@@ -324,7 +326,7 @@ class Hand {
             const values = this.toSorted(Boolean(i)).map(card => card.value);
             const offset = order.indexOf(values[0]);
             if (values.every((value, index) => value === order[index + offset]))
-                return true;
+                return ["Straight", [...this.#cards]];
         }
         return false;
     }
@@ -332,63 +334,100 @@ class Hand {
     /**
      * A Royal Flush is the highest five cards all in the same suit to form the best possible Straight Flush.
      * 
-     * @returns {boolean}
+     * @returns {false | [string, Card[]]}
      */
     isRoyalFlush() {
         if (!this.isFlush())
             return false;
         const royalFlush = Hand.rankOrder(true).slice(-5);  // Top 5 cards
         const values = this.#cards.map(card => card.value);
-        return royalFlush.every(value => values.includes(value));
+        if (royalFlush.every(value => values.includes(value)))
+            return ["Royal Flush", [...this.#cards]];
+        return false;
     }
 
     /**
      * A Straight Flush is five cards in consecutive order of the same suite.
      * 
-     * @returns {boolean}
+     * @returns {false | [string, Card[]]}
      */
     isStraightFlush() {
-        return this.isFlush() && this.isStraight();
+        if (this.isFlush() && this.isStraight())
+            return ["Straight Flush", [...this.#cards]];
+        return false;
     }
 
     /**
      * If there are {count} of the same rank.
      * 
      * @param {number} count - The number of cards that must be of the same rank.
-     * @returns {boolean}
+     * @returns {false | [string, Card[]]}
      */
     isOfAKind(count = 2) {
-        return Object.values(this.countByRank())
-            .some(cardCount => cardCount === count);
+        if (count < 2 || count > 4)
+            throw Error("isOfAKind count parameter must be between 2 and 4 (inclusive)");
+        const messages = ["One Pair", "Three of a Kind", "Four of a Kind"];
+        const counts = Object.entries(this.countByRank());
+        const found = counts.filter(arr => arr[1] === count)[0];
+        if (found) {
+            return [messages[count - 2], this.#cards.filter(card => card.value === found[0])];
+        }
+        return false;
     }
 
     /**
      * A Full House consists of three cards of a single rank and two cards of another rank.
      * 
-     * @returns {boolean}
+     * @returns {false | [string, Card[]]}
      */
     isFullHouse() {
-        return this.isOfAKind(3) && this.isOfAKind(2);
+        const threeOfAKind = this.isOfAKind(3);
+        const twoOfAKind = this.isOfAKind(2);
+        if (Boolean(threeOfAKind) && Boolean(twoOfAKind))
+            return ["Full House", [...threeOfAKind[1], ...twoOfAKind[1]]];
+        return false;
     }
 
     /**
      * A Two Pair is two cards with the same rank, along with two cards of a different rank.
      * 
-     * @returns {boolean}
+     * @returns {false | [string, Card[]]}
      */
     isTwoPair() {
-        const counts = Object.values(this.countByRank());
-        const pairs = counts.filter(value => value === 2);
-        return pairs.length === 2;
+        const counts = Object.entries(this.countByRank());
+        const pairs = counts.filter(arr => arr[1] === 2);
+        if (pairs.length === 2)
+            return ["Two Pair", 
+                pairs.flatMap(pair => this.#cards.filter(card => card.value === pair[0]))
+            ];
+        return false;
     }
 
     /**
-     * One Pair consists of two cards of the same rank, with three other unrelated cards.
+     * Returns the highest card in the hand
      * 
-     * @returns {boolean}
+     * @returns {[string, Card[]]}
      */
-    isOnePair() {
-        return this.isOfAKind(2);
+    getHighCard() {
+        const highCard = this.toSorted()[4];
+        const words = [
+            "Two",
+            "Three",
+            "Four",
+            "Five",
+            "Six",
+            "Seven",
+            "Eight",
+            "Nine",
+            "Ten"
+        ];
+        const number = parseInt(highCard.value);
+        if (number)
+            return [words[number - 2] + " High", [this.toSorted()[4]]];
+        else {
+            const word = highCard.value.charAt(0).toUpperCase() + highCard.value.slice(1).toLowerCase();
+            return [word + " High", [highCard]];
+        }
     }
 
     /**
@@ -396,28 +435,24 @@ class Hand {
      * 
      * @returns {string}
      */
-    highestHand() {
-        if (this.isRoyalFlush()) {
-            return "Royal Flush";
-        } else if (this.isStraightFlush()) {
-            return "Straight Flush";
-        } else if (this.isOfAKind(4)) {
-            return "Four of a Kind";
-        } else if (this.isFullHouse()) {
-            return "Full House";
-        } else if (this.isFlush()) {
-            return "Flush";
-        } else if (this.isStraight()) {
-            return "Straight";
-        } else if (this.isOfAKind(3)) {
-            return "Three of a Kind";
-        } else if (this.isTwoPair()) {
-            return "Two Pair";
-        } else if (this.isOnePair()) {
-            return "One Pair";
+    getHighestHand() {
+        const tests = [
+            () => this.isRoyalFlush(),
+            () => this.isStraightFlush(),
+            () => this.isOfAKind(4),  // Four of a kind
+            () => this.isFullHouse(),
+            () => this.isFlush(),
+            () => this.isStraight(),
+            () => this.isOfAKind(3),  // Three of a kind
+            () => this.isTwoPair(),
+            () => this.isOfAKind(2),  // One Pair
+            () => this.getHighCard()
+        ];
+        for (const testFn of tests) {
+            const result = testFn();
+            if (result) return result;
         }
-        // else
-        return "High Card";
+        throw Error("Oops, something broke when attempting to get the hightest hand.");
     }
 
     /**
@@ -504,7 +539,7 @@ class Game {
         this.#playerHand = new Hand(await newCards);
 
         // Sort the hand in place
-        this.#playerHand.sort();
+        // this.#playerHand.sort();
 
         // Clear the tabletop
         this.#tabletopElem.innerHTML = "";
@@ -518,16 +553,11 @@ class Game {
         await this.#playerHand.revealAll();
 
         // Display the highest poker hand results
-        this.#handResultElem.innerText = this.#playerHand.highestHand();
-
-        // Testing highlight
-        this.#playerHand.cards.forEach((card, i) => {
-            if (i % 2 === 0) // Every other card
-                card.highlight();
-        });
+        const highestHand = this.#playerHand.getHighestHand();
+        this.#handResultElem.innerText = highestHand[0];
 
         // Highlight the highest hand
-        // TODO
+        highestHand[1].forEach((card) => card.highlight());
 
         // Unlock the button
         event.target.disabled = false;
